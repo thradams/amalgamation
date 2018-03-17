@@ -1,0 +1,10 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/amalgamation/v15/ipch
+/.vs/amalgamation/v15
+/.vs/slnx.sqlite
+/.vs
+/Amalgamation/Debug
+/Debug
