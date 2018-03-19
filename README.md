@@ -15,5 +15,10 @@ merge.txt
 
 ```
 
+tool merge.txt out.c
+
 The header files will be included automatically.
 
+Tips:
+
+Don´t create static functions with repeted names.
