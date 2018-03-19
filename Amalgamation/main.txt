@@ -1,4 +1,0 @@
-
-A
-#include "file1.txt"
-B
