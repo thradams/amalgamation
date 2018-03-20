@@ -11,6 +11,7 @@ struct Header
 
 struct Header* s_included = 0;
 
+
 void MarkAsIncluded(const char* filename)
 {
   struct Header* pNew = malloc(sizeof * pNew);
@@ -42,6 +43,19 @@ bool IsAlreadyIncluded(const char* filename)
     pCurrent = pCurrent->pNext;
   }
   return result;
+}
+
+void FreeList()
+{
+  struct Header* pCurrent = s_included;
+  while (pCurrent)
+  {  
+    struct Header* pNext = pCurrent->pNext;
+    free(pCurrent->fileName);
+    free(pCurrent);
+    pCurrent = pNext;
+  }
+  
 }
 
 
@@ -154,6 +168,7 @@ bool Write(char* name, FILE* out)
         }
       }
     }
+    fclose(input);
   }
 
   return found;
@@ -172,9 +187,10 @@ int main(int argc, char *argv[])
 	if (out)
 	{
 		Write(argv[1], out);
+    fclose(out);
 	}
 
-
+  FreeList();
 	return 0;
 }
 
