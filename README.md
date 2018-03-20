@@ -1,4 +1,4 @@
-# amalgamation
+# Amalgamation
 
 This tool merges c source files to create the amalgamation.
 
