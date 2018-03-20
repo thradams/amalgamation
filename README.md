@@ -18,12 +18,11 @@ merge.txt
 tool merge.txt out.c
 
 The header files will be included (just once) automatically.
-
+pragma once directive are removed on expation.
 
 Tips:
 
-* Don' t create static functions with repeted names.
-* pragma once directive is removed.
+* Make unique function/variables names even for internal linkage (static)
 
 ## Similar tools
 
