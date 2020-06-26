@@ -1,5 +1,4 @@
 
-#pragma once
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -7,6 +6,13 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+#define strdup _strdup
+#define realpath(a,b) _fullpath(b, a, MAX_PATH)
+#else
+#include <unistd.h>
+#endif 
 
 int strcicmp(char const* a, char const* b)
 {
@@ -34,7 +40,7 @@ void strlist_append(const char* filename, struct strlist_node** s_included)
 {
 
     struct strlist_node* pNew = malloc(sizeof * pNew);
-    pNew->fileName = _strdup(filename);
+    pNew->fileName = strdup(filename);
     pNew->pNext = 0;
 
     if (*s_included == NULL)
@@ -52,11 +58,7 @@ void strlist_append(const char* filename, struct strlist_node** s_included)
 void mark_as_included(const char* filename0, struct strlist_node** s_included)
 {
     char filename[200];
-    _fullpath(
-        filename,
-        filename0,
-        200
-    );
+    realpath(filename0, filename);
     printf("filename %s \n", filename);
     strlist_append(filename, s_included);
 }
@@ -64,11 +66,7 @@ void mark_as_included(const char* filename0, struct strlist_node** s_included)
 bool strlist_has(const char* filename0, struct strlist_node** s_included)
 {
     char filename[200];
-    _fullpath(
-        filename,
-        filename0,
-        200
-    );
+    realpath(filename0, filename);
 
     bool result = false;
     struct strlist_node* pCurrent = *s_included;
@@ -105,10 +103,10 @@ int str_ends_with(const char* str, const char* suffix)
     size_t lensuffix = strlen(suffix);
     if (lensuffix > lenstr)
         return 0;
-    return strcicmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
+    return strcicmp(str + lenstr - lensuffix, suffix) == 0;
 }
 
-bool Write(char* name, bool bHeaderMode, FILE* out, struct strlist_node** s_included)
+bool Write(const char* name, bool bHeaderMode, FILE* out, struct strlist_node** s_included)
 {
 
     bool cppfile = str_ends_with(name, ".c");
@@ -327,26 +325,22 @@ void almagamate(const char* file_name_out, bool bHeaderMode, const char* files[]
 
 }
 
-
-
-
-void sample()
+int main()
 {
     chdir("../lib/");
 
     const char* files[] = {
          "file1.c",
-         "file2.c",        
+         "file2.c",
     };
 
     almagamate("lib.c", /*bHeaderMode*/false, files, (sizeof(files) / sizeof(files[0])));
 
     const char* headers[] = {
         "Header1.h",
-        "Header2.h",        
+        "Header2.h",
     };
 
 
     almagamate("http.h",  /*bHeaderMode*/true, headers, (sizeof(headers) / sizeof(headers[0])));
 }
-
