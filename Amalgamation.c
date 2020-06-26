@@ -191,14 +191,19 @@ bool Write(const char* name, bool bHeaderMode, FILE* out, struct strlist_node** 
                 {
                     //fputs(linebuffer, out);
                     fputs("\n", out);
-
-                    bInclude = bHeaderMode ? true : false;
+                    if (bHeaderMode)
+                    {
+                        bInclude = true;
+                    }
                 }
                 else if (strncmp(pChar, "//END_EXPORT", sizeof("//END_EXPORT") - 1) == 0)
                 {
                     //fputs(linebuffer, out);
                     fputs("\n", out);
-                    bInclude = bHeaderMode ? false : true;
+                    if (bHeaderMode)
+                    {
+                        bInclude = false;
+                    }
                 }
                 else if (bInclude && strncmp(pChar, "define", sizeof("define") - 1) == 0)
                 {
@@ -348,6 +353,7 @@ void amalgamate(const char* file_name_out, bool bHeaderMode, const char* files[]
     strlist_free(&s_included);
 
 }
+
 
 int main()
 {
