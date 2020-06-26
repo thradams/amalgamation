@@ -325,7 +325,7 @@ bool Write(const char* name, bool bHeaderMode, FILE* out, struct strlist_node** 
 }
 
 
-void almagamate(const char* file_name_out, bool bHeaderMode, const char* files[], int count)
+void amalgamate(const char* file_name_out, bool bHeaderMode, const char* files[], int count)
 {
     struct strlist_node* s_included = 0;
 
@@ -358,7 +358,7 @@ int main()
          "file2.c",
     };
 
-    almagamate("lib.c", /*bHeaderMode*/false, files, (sizeof(files) / sizeof(files[0])));
+    amalgamate("lib.c", /*bHeaderMode*/false, files, (sizeof(files) / sizeof(files[0])));
 
     const char* headers[] = {
         "Header1.h",
@@ -366,5 +366,5 @@ int main()
     };
 
 
-    almagamate("http.h",  /*bHeaderMode*/true, headers, (sizeof(headers) / sizeof(headers[0])));
+    amalgamate("http.h",  /*bHeaderMode*/true, headers, (sizeof(headers) / sizeof(headers[0])));
 }
