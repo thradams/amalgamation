@@ -1,10 +1,11 @@
-#define _CRT_SECURE_NO_WARNINGS
+
+#pragma once
 
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include  	<ctype.h>
+#include <ctype.h>
 #include <assert.h>
 
 int strcicmp(char const* a, char const* b)
@@ -17,17 +18,22 @@ int strcicmp(char const* a, char const* b)
 }
 
 
-struct Header
+struct strlist_node
 {
     char* fileName;
-    struct Header* pNext;
+    struct strlist_node* pNext;
+};
+
+struct strlist
+{
+    struct strlist_node* head;
 };
 
 
-void MarkAsIncludedCore(const char* filename, struct Header** s_included)
+void strlist_append(const char* filename, struct strlist_node** s_included)
 {
 
-    struct Header* pNew = malloc(sizeof * pNew);
+    struct strlist_node* pNew = malloc(sizeof * pNew);
     pNew->fileName = _strdup(filename);
     pNew->pNext = 0;
 
@@ -43,7 +49,7 @@ void MarkAsIncludedCore(const char* filename, struct Header** s_included)
 }
 
 
-void MarkAsIncluded(const char* filename0, struct Header** s_included)
+void mark_as_included(const char* filename0, struct strlist_node** s_included)
 {
     char filename[200];
     _fullpath(
@@ -52,10 +58,10 @@ void MarkAsIncluded(const char* filename0, struct Header** s_included)
         200
     );
     printf("filename %s \n", filename);
-    MarkAsIncludedCore(filename, s_included);
+    strlist_append(filename, s_included);
 }
 
-bool IsAlreadyIncluded(const char* filename0, struct Header** s_included)
+bool strlist_has(const char* filename0, struct strlist_node** s_included)
 {
     char filename[200];
     _fullpath(
@@ -65,7 +71,7 @@ bool IsAlreadyIncluded(const char* filename0, struct Header** s_included)
     );
 
     bool result = false;
-    struct Header* pCurrent = *s_included;
+    struct strlist_node* pCurrent = *s_included;
     while (pCurrent)
     {
         if (strcicmp(pCurrent->fileName, filename) == 0)
@@ -78,12 +84,12 @@ bool IsAlreadyIncluded(const char* filename0, struct Header** s_included)
     return result;
 }
 
-void FreeList(struct Header** s_included)
+void strlist_free(struct strlist_node** s_included)
 {
-    struct Header* pCurrent = *s_included;
+    struct strlist_node* pCurrent = *s_included;
     while (pCurrent)
     {
-        struct Header* pNext = pCurrent->pNext;
+        struct strlist_node* pNext = pCurrent->pNext;
         free(pCurrent->fileName);
         free(pCurrent);
         pCurrent = pNext;
@@ -91,7 +97,7 @@ void FreeList(struct Header** s_included)
 
 }
 
-int EndsWith(const char* str, const char* suffix)
+int str_ends_with(const char* str, const char* suffix)
 {
     if (!str || !suffix)
         return 0;
@@ -102,27 +108,37 @@ int EndsWith(const char* str, const char* suffix)
     return strcicmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
 }
 
-bool Write(char* name, FILE* out, struct Header** s_included)
+bool Write(char* name, bool bHeaderMode, FILE* out, struct strlist_node** s_included)
 {
 
-    bool cppfile = EndsWith(name, ".c");
+    bool cppfile = str_ends_with(name, ".c");
 
     fputs("\n", out);
     bool found = false;
 
-    assert(!IsAlreadyIncluded(name, s_included));
-    MarkAsIncluded(name, s_included);
+    assert(!strlist_has(name, s_included));
+    mark_as_included(name, s_included);
 
-    struct Header* defineList = 0;
+    struct strlist_node* defineList = 0;
 
 
     char previous = '\0';
 
     FILE* input = fopen(name, "r");
+
+    if (input == 0)
+    {
+        //char name2[200];
+        //snprintf(name2, 200, "./openssl/Lib141s/Include/%s", name);
+        //input = fopen(name2, "r");
+    }
+
     if (input)
     {
         found = true;
         char c = '\0';
+
+        bool bInclude = bHeaderMode ? false : true;
 
         while (!feof(input))
         {
@@ -149,15 +165,24 @@ bool Write(char* name, FILE* out, struct Header** s_included)
                 while (*pChar == ' ') //skip spaces
                     pChar++;
 
-                if (strncmp(pChar, "line", sizeof("line") - 1) == 0)
+                if (strncmp(pChar, "//BEGIN_EXPORT", sizeof("//BEGIN_EXPORT") - 1) == 0)
                 {
-                    fputs("//", out);
-                    fputs(linebuffer, out);
+                    //fputs(linebuffer, out);
                     fputs("\n", out);
+
+                    bInclude = bHeaderMode ? true : false;
                 }
-                else if (strncmp(pChar, "define", sizeof("define") - 1) == 0)
+                else if (strncmp(pChar, "//END_EXPORT", sizeof("//END_EXPORT") - 1) == 0)
                 {
-                    
+                    //fputs(linebuffer, out);
+                    fputs("\n", out);
+                    bInclude = bHeaderMode ? false : true;
+                }
+                else if (bInclude && strncmp(pChar, "define", sizeof("define") - 1) == 0)
+                {
+
+
+
                     fputs(linebuffer, out);
                     fputs("\n", out);
 
@@ -177,10 +202,10 @@ bool Write(char* name, FILE* out, struct Header** s_included)
                             k++;
                             pChar++;
                         }
-                        MarkAsIncludedCore(defineName, &defineList);
+                        strlist_append(defineName, &defineList);
                     }
                 }
-                else if (strncmp(pChar, "pragma", sizeof("pragma") - 1) == 0)
+                else if (bInclude && strncmp(pChar, "pragma", sizeof("pragma") - 1) == 0)
                 {
                     pChar += sizeof("pragma") - 1; //skip pragma
 
@@ -199,7 +224,7 @@ bool Write(char* name, FILE* out, struct Header** s_included)
                         fputs("\n", out);
                     }
                 }
-                else if (strncmp(pChar, "include", sizeof("include") - 1) == 0)
+                else if (bInclude && strncmp(pChar, "include", sizeof("include") - 1) == 0)
                 {
                     pChar += sizeof("include") - 1; //match include
 
@@ -223,10 +248,10 @@ bool Write(char* name, FILE* out, struct Header** s_included)
                             k++;
                         }
 
-                        if (!IsAlreadyIncluded(fileName, s_included))
+                        if (!strlist_has(fileName, s_included))
                         {
                             fputs("\n", out);
-                            if (!Write(fileName, out, s_included))
+                            if (!Write(fileName, bHeaderMode, out, s_included))
                             {
                                 fputs(linebuffer, out);
                                 fputs("\n", out);
@@ -241,13 +266,16 @@ bool Write(char* name, FILE* out, struct Header** s_included)
                 }
                 else
                 {
-                    fputs(linebuffer, out);
-                    fputs("\n", out);
+                    if (bInclude)
+                    {
+                        fputs(linebuffer, out);
+                        fputs("\n", out);
+                    }
                 }
             }
             else
             {
-                if (c != EOF)
+                if (c != EOF && bInclude)
                 {
                     fputc(c, out);
                 }
@@ -255,29 +283,29 @@ bool Write(char* name, FILE* out, struct Header** s_included)
         }
 
         fprintf(out, "\n");
-        struct Header* pCurrent = defineList;
+        struct strlist_node* pCurrent = defineList;
         while (pCurrent)
         {
-            struct Header* pNext = pCurrent->pNext;
+            struct strlist_node* pNext = pCurrent->pNext;
             fprintf(out, "#undef %s \n", pCurrent->fileName);
-            
+
 
             free(pCurrent->fileName);
             free(pCurrent);
             pCurrent = pNext;
         }
-        
+
         fclose(input);
     }
 
-    
+
     return found;
 }
 
 
-void almagamate(const char* file_name_out, const char* files[], int count)
+void almagamate(const char* file_name_out, bool bHeaderMode, const char* files[], int count)
 {
-    struct Header* s_included = 0;
+    struct strlist_node* s_included = 0;
 
 
     FILE* out = fopen(file_name_out, "w");
@@ -285,43 +313,40 @@ void almagamate(const char* file_name_out, const char* files[], int count)
     {
         for (int i = 0; i < count; i++)
         {
-            
-            if (!IsAlreadyIncluded(files[i], &s_included))
+
+            if (!strlist_has(files[i], &s_included))
             {
-                Write(files[i], out, &s_included);
+                Write(files[i], bHeaderMode, out, &s_included);
             }
-            
+
         }
         fclose(out);
     }
 
-    FreeList(&s_included);
+    strlist_free(&s_included);
 
 }
 
-int main()
+
+
+
+void sample()
 {
+    chdir("../lib/");
+
     const char* files[] = {
-        "duktape.c",
-        
-        "console.c",
-        "Error.c",
-        "StrBuilder.c",
-        "fs.c",
-        "Stream.c",
-        "JsonScanner.c",
-        "TaskQueue.c",
-        "ThreadPool.c",
-        "Board.c",
-        "BoardCore.c",        
-        "Socket.c",
-        "HttpConnection.c",
-        "HttpServer.c",
-        "UITask.c",
-        "Actor.c"
-        "tinycthread.c",
+         "file1.c",
+         "file2.c",        
     };
 
-    almagamate("out.c", files, (sizeof(files) / sizeof(files[0])));
+    almagamate("lib.c", /*bHeaderMode*/false, files, (sizeof(files) / sizeof(files[0])));
 
+    const char* headers[] = {
+        "Header1.h",
+        "Header2.h",        
+    };
+
+
+    almagamate("http.h",  /*bHeaderMode*/true, headers, (sizeof(headers) / sizeof(headers[0])));
 }
+
